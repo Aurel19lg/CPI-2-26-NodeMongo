@@ -20,9 +20,10 @@ mongoose.connection.on('error', () => {
 // Se connecter sur mongodb (async)
 // Ca prend x temps à s'executer
 //TODO :: adapter le lien de connection a la bdd
-mongoose.connect("mongodb://localhost:27017/db_demo");
+mongoose.connect("mongodb://127.0.0.1:27017/db_article");
 
 //TODO : creer le modèle Article
+const Article = mongoose.model('Article', { title: String, content: String, author: String }, 'articles');
 
 // ================================================
 // Instancier un serveur et autoriser envokie json
@@ -33,24 +34,79 @@ const app = express();
 // AUTORISER LE BACK A RECEVOIR DES DONNEES DANS LE BODY
 app.use(express.json());
 
+//DESACTIVER LE CORS
+const cors = require('cors');
+app.use(sors());
+
 // ================================================
 // Les routes (url/point d'entrée)
 // ================================================
 app.get('/articles', async (request, response) => {
-    return response.json({ message : "TODO le LOUP"}); 
+
+    // Récupérer tout les articles
+    const articles = await Article.find();
+
+    return response.json(articles);
 });
 
 app.get('/article/:id', async (request, response) => {
-    return response.json({ message : 'id : ${idParam}'}); 
+    // Récupèrer l'id
+    const idParam = request.params.id;
+
+    // BONUS : Eviter de try catch on va tester que l'id a 24 character
+    if (idParam.length != 24){
+        return response.json({ code : '702' });
+    }
+
+    // Select de l'article
+    const foundArticle = await Article.findOne({ _id : idParam});
+
+    //Si l'id n'existe pas en base
+    if (!foundArticle) {
+        return response.json({ code : '702' });
+    }
+
+    // Sinon ok
+    return response.json(foundArticle);
 });
 
 app.post('/save-article', async (request, response) => {
-    return response.json({ message : "Ceci est juste un exemple"}); 
+    // Récupérer le body envoyé
+    const articleJSON = request.body;
+
+    // Save en base
+    const newArticle = new Article(articleJSON);
+
+    await newArticle.save();
+
+    // Réponse json
+    return response.json(newArticle);
 });
 
 app.delete('/article/:id', async (request, response) => {
-    return response.json({ message : "supprimera "}); 
+    // Récupèrer l'id
+    const idParam = request.params.id;
+
+    // BONUS : Eviter de try catch on va tester que l'id a 24 character
+    if (idParam.length != 24){
+        return response.json({ code : '702' });
+    }
+
+    // Select de l'article
+    const foundArticle = await Article.findOne({ _id : idParam});
+
+    //Si l'id n'existe pas en base on delete pas
+    if (!foundArticle) {
+        return response.json({ code : '702' });
+    }
+
+    // DELETE l'article
+    await Article.deleteOne({ _id : idParam});
+
+    // Sinon ok
+    return response.json({ code : '200' });
 });
+
 // ================================================
 // Lancer le serveur
 // ================================================
